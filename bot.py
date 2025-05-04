@@ -8,6 +8,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 from urllib.parse import urlencode
 import traceback
+import asyncio
 
 # Настройка логирования
 logging.basicConfig(
@@ -121,24 +122,35 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.info(f"Отправлена ссылка на оплату для user_id={user_id}, label={payment_label}")
     except Exception as e:
         logger.error(f"Ошибка в обработчике /pay: {e}")
-        await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
+        await bot.send_message(chat_id, "Произошла ошибка при создания платежа, попробуйте позже.")
 
-# Запуск бота
-async def on_shutdown(dp):
-    logger.info("Начало процедуры завершения бота")
-    try:
-        await dp.bot.close()
-        logger.info("Бот успешно закрыт")
-    except Exception as e:
-        logger.error(f"Ошибка при завершении: {e}")
+# Запуск бота с повторными попытками
+async def start_polling_with_retries():
+    logger.info("Запуск polling с повторными попытками")
+    attempt = 1
+    while True:
+        try:
+            logger.info(f"Попытка {attempt}: Запуск polling")
+            await dp.start_polling(timeout=20, skip_updates=True)
+            logger.info("Polling успешно запущен")
+            break
+        except Exception as e:
+            logger.error(f"Попытка {attempt}: Ошибка запуска polling: {e}\n{traceback.format_exc()}")
+            logger.info("Повторная попытка через 5 секунд...")
+            await asyncio.sleep(5)
+            attempt += 1
+            if attempt > 5:
+                logger.error("Превышено количество попыток запуска polling")
+                raise Exception("Не удалось запустить polling после 5 попыток")
 
-def on_startup(_):
-    logger.info("Бот запущен")
+async def on_startup(_):
+    logger.info("Вызов on_startup")
+    return True  # Возвращаем True, чтобы избежать None
 
 if __name__ == "__main__":
-    logger.info("Запуск polling")
+    logger.info("Инициализация главного цикла")
     try:
-        executor.start_polling(dp, skip_updates=True, on_startup=on_startup, on_shutdown=on_shutdown)
+        asyncio.run(start_polling_with_retries())
     except Exception as e:
-        logger.error(f"Критическая ошибка запуска polling: {e}\n{traceback.format_exc()}")
+        logger.error(f"Критическая ошибка при запуске: {e}\n{traceback.format_exc()}")
         sys.exit(1)
