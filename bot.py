@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 logger.info("Начало выполнения скрипта")
 
 # Настройки
-TOKEN = "7241683107:AAEG6RCRM4Ar1sDYpTV8BsaHfGUj2WXobhI"  # Замени на токен от @BotFather
+TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Замени на токен от @BotFather
 YOOMONEY_WALLET = "your_wallet_number"  # Замени на номер кошелька YooMoney (41001...)
 YOOMONEY_SECRET = "your_notification_secret"  # Замени на секрет для уведомлений
 
