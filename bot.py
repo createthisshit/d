@@ -5,32 +5,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import requests
-from urllib.parse import urlencode
-import traceback
-import asyncio
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
-logger = logging.getLogger(__name__)
-logger.info("Начало выполнения скрипта")
-
-# Настройки
-TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Замени на токен от @BotFather
-YOOMONEY_WALLET = "your_wallet_number"  # Замени на номер кошелька YooMoney (41001...)
-YOOMONEY_SECRET = "your_notification_secret"  # Замени на секрет для уведомлений
-
-import logging
-import sys
-import uuid
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.utils import executor
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import ClientSession
 from urllib.parse import urlencode
 import traceback
@@ -85,7 +59,7 @@ async def start_command(message: types.Message):
         keyboard.add(InlineKeyboardButton(text="Пополнить", callback_data="pay"))
         welcome_text = (
             "Тариф: фулл\n"
-            "Стоимость: 500.00 🇷🇺RUB\n"
+            "Стоимость: 1 🇷🇺RUB\n"
             "Срок действия: 1 месяц\n\n"
             "Вы получите доступ к следующим ресурсам:\n"
             "• Мой кайф (канал)"
@@ -116,7 +90,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
             "quickpay-form": "shop",
             "paymentType": "AC",
             "targets": f"Оплата подписки для user_id={user_id}",
-            "sum": 500.00,
+            "sum": 1.00,
             "label": payment_label,
             "receiver": YOOMONEY_WALLET,
             "successURL": f"https://t.me/{(await bot.get_me()).username}"
