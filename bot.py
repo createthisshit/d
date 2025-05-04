@@ -24,6 +24,33 @@ TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Замени на т
 YOOMONEY_WALLET = "your_wallet_number"  # Замени на номер кошелька YooMoney (41001...)
 YOOMONEY_SECRET = "your_notification_secret"  # Замени на секрет для уведомлений
 
+import logging
+import sys
+import uuid
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.utils import executor
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiohttp import ClientSession
+from urllib.parse import urlencode
+import traceback
+import asyncio
+import sqlite3
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
+logger.info("Начало выполнения скрипта")
+
+# Настройки
+TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Токен бота (@NewMiraPayBot)
+YOOMONEY_WALLET = "4100118178122985"  # Номер кошелька YooMoney (41001...)
+KOYEB_URL = "favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"  # URL Koyeb
+
 # Инициализация бота
 logger.info("Попытка инициализации бота")
 try:
@@ -36,6 +63,17 @@ except Exception as e:
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 logger.info("Диспетчер инициализирован")
+
+# Инициализация SQLite
+def init_db():
+    conn = sqlite3.connect("payments.db")
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS payments
+                 (label TEXT PRIMARY KEY, user_id TEXT, status TEXT)''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Обработчик команды /start
 @dp.message_handler(commands=['start'])
@@ -56,38 +94,6 @@ async def start_command(message: types.Message):
         logger.info(f"Отправлен ответ на /start для user_id={user_id}")
     except Exception as e:
         logger.error(f"Ошибка в обработчике /start: {e}")
-        await message.answer("Произошла ошибка, попробуйте позже.")
-
-# Обработчик команды /help
-@dp.message_handler(commands=['help'])
-async def help_command(message: types.Message):
-    try:
-        user_id = str(message.from_user.id)
-        logger.info(f"Получена команда /help от user_id={user_id}")
-        help_text = (
-            "Доступные команды:\n"
-            "/start - Начать и получить ссылку на оплату\n"
-            "/help - Показать эту помощь\n"
-            "/info - Информация о боте\n"
-            "/pay - Создать платёж"
-        )
-        await message.answer(help_text)
-        logger.info(f"Отправлен ответ на /help для user_id={user_id}")
-    except Exception as e:
-        logger.error(f"Ошибка в обработчике /help: {e}")
-        await message.answer("Произошла ошибка, попробуйте позже.")
-
-# Обработчик команды /info
-@dp.message_handler(commands=['info'])
-async def info_command(message: types.Message):
-    try:
-        user_id = str(message.from_user.id)
-        logger.info(f"Получена команда /info от user_id={user_id}")
-        info_text = "Это бот для подписки на канал 'Мой кайф'. Используйте /start или /pay для оплаты."
-        await message.answer(info_text)
-        logger.info(f"Отправлен ответ на /info для user_id={user_id}")
-    except Exception as e:
-        logger.error(f"Ошибка в обработчике /info: {e}")
         await message.answer("Произошла ошибка, попробуйте позже.")
 
 # Обработчик команды /pay и кнопки "Пополнить"
@@ -113,9 +119,29 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
             "sum": 500.00,
             "label": payment_label,
             "receiver": YOOMONEY_WALLET,
-            "successURL": "https://t.me/your_bot_username"  # Замени на ссылку на бота
+            "successURL": f"https://t.me/{(await bot.get_me()).username}"
         }
         payment_url = f"https://yoomoney.ru/quickpay/confirm.xml?{urlencode(payment_params)}"
+        
+        # Сохранение label:user_id локально
+        conn = sqlite3.connect("payments.db")
+        c = conn.cursor()
+        c.execute("INSERT INTO payments (label, user_id, status) VALUES (?, ?, ?)",
+                  (payment_label, user_id, "pending"))
+        conn.commit()
+        conn.close()
+        
+        # Отправка label:user_id на Koyeb
+        async with ClientSession() as session:
+            try:
+                async with session.post(KOYEB_URL, json={"label": payment_label, "user_id": user_id}) as response:
+                    if response.status == 200:
+                        logger.info(f"label={payment_label} отправлен на Koyeb для user_id={user_id}")
+                    else:
+                        logger.error(f"Ошибка отправки на Koyeb: {await response.text()}")
+            except Exception as e:
+                logger.error(f"Ошибка связи с Koyeb: {e}")
+        
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton(text="Оплатить", url=payment_url))
         await bot.send_message(chat_id, "Перейдите по ссылке для оплаты:", reply_markup=keyboard)
@@ -131,7 +157,7 @@ async def start_polling_with_retries():
     while True:
         try:
             logger.info(f"Попытка {attempt}: Пропуск старых обновлений")
-            await dp.skip_updates()  # Пропускаем старые обновления
+            await dp.skip_updates()
             logger.info(f"Попытка {attempt}: Запуск polling")
             await dp.start_polling(timeout=20)
             logger.info("Polling успешно запущен")
@@ -147,7 +173,7 @@ async def start_polling_with_retries():
 
 async def on_startup(_):
     logger.info("Вызов on_startup")
-    return True  # Возвращаем True, чтобы избежать None
+    return True
 
 if __name__ == "__main__":
     logger.info("Инициализация главного цикла")
