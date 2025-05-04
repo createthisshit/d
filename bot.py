@@ -122,7 +122,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.info(f"Отправлена ссылка на оплату для user_id={user_id}, label={payment_label}")
     except Exception as e:
         logger.error(f"Ошибка в обработчике /pay: {e}")
-        await bot.send_message(chat_id, "Произошла ошибка при создания платежа, попробуйте позже.")
+        await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
 
 # Запуск бота с повторными попытками
 async def start_polling_with_retries():
@@ -130,8 +130,10 @@ async def start_polling_with_retries():
     attempt = 1
     while True:
         try:
+            logger.info(f"Попытка {attempt}: Пропуск старых обновлений")
+            await dp.skip_updates()  # Пропускаем старые обновления
             logger.info(f"Попытка {attempt}: Запуск polling")
-            await dp.start_polling(timeout=20, skip_updates=True)
+            await dp.start_polling(timeout=20)
             logger.info("Polling успешно запущен")
             break
         except Exception as e:
