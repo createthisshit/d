@@ -59,7 +59,7 @@ async def start_command(message: types.Message):
         keyboard.add(InlineKeyboardButton(text="Пополнить", callback_data="pay"))
         welcome_text = (
             "Тариф: фулл\n"
-            "Стоимость: 1 🇷🇺RUB\n"
+            "Стоимость: 500.00 🇷🇺RUB\n"
             "Срок действия: 1 месяц\n\n"
             "Вы получите доступ к следующим ресурсам:\n"
             "• Мой кайф (канал)"
@@ -90,7 +90,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
             "quickpay-form": "shop",
             "paymentType": "AC",
             "targets": f"Оплата подписки для user_id={user_id}",
-            "sum": 1.00,
+            "sum": 500.00,
             "label": payment_label,
             "receiver": YOOMONEY_WALLET,
             "successURL": f"https://t.me/{(await bot.get_me()).username}"
@@ -156,3 +156,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске: {e}\n{traceback.format_exc()}")
         sys.exit(1)
+
