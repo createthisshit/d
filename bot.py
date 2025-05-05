@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 # Настройки
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Токен бота (@NewMiraPayBot)
 YOOMONEY_WALLET = "4100118178122985"  # Номер кошелька YooMoney (41001...)
-KOYEB_URL = "favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"  # URL Koyeb
+KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"  # URL Koyeb
 
 # Инициализация бота
 logger.info("Попытка инициализации бота")
