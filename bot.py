@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Замени на твой Render URL, например, https://newmirapaybot.onrender.com
+WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Твой Render URL
 WEBHOOK_PATH = "/telegram"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -132,7 +132,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
 async def on_startup(_):
     logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
     try:
-        await bot.delete_webhook()  # Удаляем старый webhook, если есть
+        await bot.delete_webhook()  # Удаляем старый webhook
         await bot.set_webhook(WEBHOOK_URL)
         logger.info(f"Webhook успешно установлен: {WEBHOOK_URL}")
     except Exception as e:
@@ -152,6 +152,9 @@ async def handle_webhook(request):
     try:
         update = await request.json()
         logger.info("Получено обновление от Telegram")
+        # Устанавливаем текущий экземпляр бота и диспетчера
+        Bot.set_current(bot)
+        Dispatcher.set_current(dp)
         await dp.process_update(types.Update(**update))
         return web.Response(status=200)
     except Exception as e:
@@ -167,7 +170,7 @@ app.on_shutdown.append(on_shutdown)
 if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
-        port = int(os.getenv("PORT", 8080))  # Render задаёт порт через переменную окружения
+        port = int(os.getenv("PORT", 8080))  # Используем порт 8080
         logger.info(f"Запуск сервера на порту {port}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
