@@ -128,6 +128,11 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.error(f"Ошибка в обработчике /pay: {e}")
         await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
 
+# Обработчик корневого маршрута для пингов
+async def handle_root(request):
+    logger.info("Получен GET-запрос на /")
+    return web.Response(text="Bot is alive", status=200)
+
 # Веб-сервер для webhook
 async def on_startup(_):
     logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
@@ -164,6 +169,7 @@ async def handle_webhook(request):
 # Настройка веб-сервера
 app = web.Application()
 app.router.add_post(WEBHOOK_PATH, handle_webhook)
+app.router.add_get("/", handle_root)  # Добавляем маршрут для /
 app.on_startup.append(on_startup)
 app.on_shutdown.append(on_shutdown)
 
