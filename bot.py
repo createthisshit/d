@@ -5,10 +5,9 @@ import sqlite3
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiohttp import web, ClientSession
+from aiohttp import ClientSession
 from urllib.parse import urlencode
 import traceback
-import os
 import asyncio
 
 # Настройка логирования
@@ -24,9 +23,6 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://d-wd9e.onrender.com"
-WEBHOOK_PATH = "/telegram"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 # Инициализация бота
 logger.info("Попытка инициализации бота")
@@ -129,68 +125,31 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.error(f"Ошибка в обработчике /pay: {e}")
         await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
 
-# Обработчик пинга для UptimeRobot
-async def handle_ping(request):
-    logger.info("Получен GET-запрос на /ping")
-    return web.Response(text="Bot is alive", status=200)
-
-# Проверка текущего webhook
-async def check_webhook():
-    try:
-        webhook_info = await bot.get_webhook_info()
-        logger.info(f"Webhook info: {webhook_info}")
-        if webhook_info.url != WEBHOOK_URL:
-            logger.warning(f"Webhook URL не совпадает: expected={WEBHOOK_URL}, actual={webhook_info.url}")
-            await bot.delete_webhook()
-            await bot.set_webhook(WEBHOOK_URL)
-            logger.info(f"Webhook перенастроен на {WEBHOOK_URL}")
-    except Exception as e:
-        logger.error(f"Ошибка проверки webhook: {e}")
-
-# Веб-сервер для webhook
-async def on_startup(_):
-    logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
-    try:
-        await check_webhook()
-    except Exception as e:
-        logger.error(f"Ошибка установки webhook: {e}\n{traceback.format_exc()}")
-        sys.exit(1)
-
-async def on_shutdown(_):
-    logger.info("Удаление webhook")
-    try:
-        await bot.delete_webhook()
-        await dp.storage.close()
-        await dp.storage.wait_closed()
-        await bot.session.close()
-    except Exception as e:
-        logger.error(f"Ошибка при удалении webhook: {e}")
-
-async def handle_webhook(request):
-    try:
-        update = await request.json()
-        logger.info(f"Получено обновление от Telegram: {update}")
-        Bot.set_current(bot)
-        Dispatcher.set_current(dp)
-        await dp.process_update(types.Update(**update))
-        return web.Response(status=200)
-    except Exception as e:
-        logger.error(f"Ошибка обработки webhook: {e}\n{traceback.format_exc()}")
-        return web.Response(status=500)
-
-# Настройка веб-сервера
-app = web.Application()
-app.router.add_post(WEBHOOK_PATH, handle_webhook)
-app.router.add_get("/ping", handle_ping)
-app.on_startup.append(on_startup)
-app.on_shutdown.append(on_shutdown)
+# Запуск бота с polling
+async def start_polling_with_retries():
+    logger.info("Запуск polling с повторными попытками")
+    attempt = 1
+    while True:
+        try:
+            logger.info(f"Попытка {attempt}: Пропуск старых обновлений")
+            await dp.skip_updates()
+            logger.info(f"Попытка {attempt}: Запуск polling")
+            await dp.start_polling(timeout=20)
+            logger.info("Polling успешно запущен")
+            break
+        except Exception as e:
+            logger.error(f"Попытка {attempt}: Ошибка запуска polling: {e}\n{traceback.format_exc()}")
+            logger.info("Повторная попытка через 5 секунд...")
+            await asyncio.sleep(5)
+            attempt += 1
+            if attempt > 5:
+                logger.error("Превышено количество попыток запуска polling")
+                raise Exception("Не удалось запустить polling после 5 попыток")
 
 if __name__ == "__main__":
-    logger.info("Запуск веб-сервера для webhook")
+    logger.info("Инициализация главного цикла")
     try:
-        port = 8080
-        logger.info(f"Запуск сервера на порту {port}")
-        web.run_app(app, host="0.0.0.0", port=port)
+        asyncio.run(start_polling_with_retries())
     except Exception as e:
-        logger.error(f"Ошибка запуска веб-сервера: {e}\n{traceback.format_exc()}")
+        logger.error(f"Критическая ошибка при запуске: {e}\n{traceback.format_exc()}")
         sys.exit(1)
