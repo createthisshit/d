@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://your-bot.onrender.com"  # Замени на твой Render URL
+WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Замени на твой Render URL
 WEBHOOK_PATH = "/telegram"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
