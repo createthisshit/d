@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Твой Render URL
+WEBHOOK_HOST = "https://d-wd9e.onrender.com"
 WEBHOOK_PATH = "/telegram"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -128,11 +128,16 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.error(f"Ошибка в обработчике /pay: {e}")
         await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
 
+# Обработчик пинга для UptimeRobot
+async def handle_ping(request):
+    logger.info("Получен GET-запрос на /ping")
+    return web.Response(text="Bot is alive", status=200)
+
 # Веб-сервер для webhook
 async def on_startup(_):
     logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
     try:
-        await bot.delete_webhook()  # Удаляем старый webhook
+        await bot.delete_webhook()
         await bot.set_webhook(WEBHOOK_URL)
         logger.info(f"Webhook успешно установлен: {WEBHOOK_URL}")
     except Exception as e:
@@ -145,6 +150,7 @@ async def on_shutdown(_):
         await bot.delete_webhook()
         await dp.storage.close()
         await dp.storage.wait_closed()
+        await bot.session.close()
     except Exception as e:
         logger.error(f"Ошибка при удалении webhook: {e}")
 
@@ -152,7 +158,6 @@ async def handle_webhook(request):
     try:
         update = await request.json()
         logger.info("Получено обновление от Telegram")
-        # Устанавливаем текущий экземпляр бота и диспетчера
         Bot.set_current(bot)
         Dispatcher.set_current(dp)
         await dp.process_update(types.Update(**update))
@@ -164,13 +169,14 @@ async def handle_webhook(request):
 # Настройка веб-сервера
 app = web.Application()
 app.router.add_post(WEBHOOK_PATH, handle_webhook)
+app.router.add_get("/ping", handle_ping)
 app.on_startup.append(on_startup)
 app.on_shutdown.append(on_shutdown)
 
 if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
-        port = int(os.getenv("PORT", 8080))  # Используем порт 8080
+        port = 8080  # Жёстко задаём порт 8080
         logger.info(f"Запуск сервера на порту {port}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
