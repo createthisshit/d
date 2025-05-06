@@ -177,7 +177,7 @@ if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
         port = int(os.getenv("PORT", 8080))  # Используем порт 8080
-        logger.info(f"Запуск сервера на порту {port}")
+        logger.info(f"Запуск сервера на порту {port}, PORT env: {os.getenv('PORT')}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
         logger.error(f"Ошибка запуска веб-сервера: {e}\n{traceback.format_exc()}")
