@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 logger.info("Начало выполнения скрипта")
 
 # Настройки
-TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"  # Токен бота (@NewMiraPayBot)
-YOOMONEY_WALLET = "4100118178122985"  # Номер кошелька YooMoney (41001...)
-KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"  # URL Koyeb
+TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
+YOOMONEY_WALLET = "4100118178122985"
+KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
 
 # Инициализация бота
 logger.info("Попытка инициализации бота")
@@ -38,7 +38,7 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 logger.info("Диспетчер инициализирован")
 
-# Инициализация SQLite
+# Инициализация SQLite (локальная база для бота)
 def init_db():
     conn = sqlite3.connect("payments.db")
     c = conn.cursor()
@@ -59,7 +59,7 @@ async def start_command(message: types.Message):
         keyboard.add(InlineKeyboardButton(text="Пополнить", callback_data="pay"))
         welcome_text = (
             "Тариф: фулл\n"
-            "Стоимость: 500.00 🇷🇺RUB\n"
+            "Стоимость: 2.00 🇷🇺RUB\n"
             "Срок действия: 1 месяц\n\n"
             "Вы получите доступ к следующим ресурсам:\n"
             "• Мой кайф (канал)"
@@ -90,13 +90,13 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
             "quickpay-form": "shop",
             "paymentType": "AC",
             "targets": f"Оплата подписки для user_id={user_id}",
-            "sum": 500.00,
+            "sum": 2.00,  # Изменено на 2 рубля
             "label": payment_label,
             "receiver": YOOMONEY_WALLET,
             "successURL": f"https://t.me/{(await bot.get_me()).username}"
         }
         payment_url = f"https://yoomoney.ru/quickpay/confirm.xml?{urlencode(payment_params)}"
-        
+       
         # Сохранение label:user_id локально
         conn = sqlite3.connect("payments.db")
         c = conn.cursor()
@@ -104,7 +104,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
                   (payment_label, user_id, "pending"))
         conn.commit()
         conn.close()
-        
+       
         # Отправка label:user_id на Koyeb
         async with ClientSession() as session:
             try:
@@ -115,10 +115,10 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
                         logger.error(f"Ошибка отправки на Koyeb: {await response.text()}")
             except Exception as e:
                 logger.error(f"Ошибка связи с Koyeb: {e}")
-        
+       
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton(text="Оплатить", url=payment_url))
-        await bot.send_message(chat_id, "Перейдите по ссылке для оплаты:", reply_markup=keyboard)
+        await bot.send_message(chat_id, "Перейдите по ссылке для оплаты 2 рублей:", reply_markup=keyboard)
         logger.info(f"Отправлена ссылка на оплату для user_id={user_id}, label={payment_label}")
     except Exception as e:
         logger.error(f"Ошибка в обработчике /pay: {e}")
@@ -156,4 +156,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске: {e}\n{traceback.format_exc()}")
         sys.exit(1)
-
