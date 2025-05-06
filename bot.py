@@ -128,9 +128,9 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
         logger.error(f"Ошибка в обработчике /pay: {e}")
         await bot.send_message(chat_id, "Произошла ошибка при создании платежа, попробуйте позже.")
 
-# Обработчик корневого маршрута для пингов
-async def handle_root(request):
-    logger.info("Получен GET-запрос на /")
+# Обработчик пинга для UptimeRobot
+async def handle_ping(request):
+    logger.info("Получен GET-запрос на /ping")
     return web.Response(text="Bot is alive", status=200)
 
 # Веб-сервер для webhook
@@ -169,7 +169,7 @@ async def handle_webhook(request):
 # Настройка веб-сервера
 app = web.Application()
 app.router.add_post(WEBHOOK_PATH, handle_webhook)
-app.router.add_get("/", handle_root)  # Добавляем маршрут для /
+app.router.add_get("/ping", handle_ping)  # Маршрут для пингов
 app.on_startup.append(on_startup)
 app.on_shutdown.append(on_shutdown)
 
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
         port = int(os.getenv("PORT", 8080))  # Используем порт 8080
-        logger.info(f"Запуск сервера на порту {port}, PORT env: {os.getenv('PORT')}")
+        logger.info(f"Запуск сервера на порту {port}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
         logger.error(f"Ошибка запуска веб-сервера: {e}\n{traceback.format_exc()}")
