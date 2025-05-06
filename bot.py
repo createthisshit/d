@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://d-wd9e.onrender.com"
+WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Твой Render URL
 WEBHOOK_PATH = "/telegram"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -132,7 +132,7 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
 async def on_startup(_):
     logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
     try:
-        await bot.delete_webhook()
+        await bot.delete_webhook()  # Удаляем старый webhook
         await bot.set_webhook(WEBHOOK_URL)
         logger.info(f"Webhook успешно установлен: {WEBHOOK_URL}")
     except Exception as e:
@@ -145,7 +145,6 @@ async def on_shutdown(_):
         await bot.delete_webhook()
         await dp.storage.close()
         await dp.storage.wait_closed()
-        await bot.session.close()  # Закрываем сессию бота
     except Exception as e:
         logger.error(f"Ошибка при удалении webhook: {e}")
 
@@ -153,6 +152,7 @@ async def handle_webhook(request):
     try:
         update = await request.json()
         logger.info("Получено обновление от Telegram")
+        # Устанавливаем текущий экземпляр бота и диспетчера
         Bot.set_current(bot)
         Dispatcher.set_current(dp)
         await dp.process_update(types.Update(**update))
