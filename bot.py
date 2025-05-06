@@ -23,7 +23,7 @@ logger.info("Начало выполнения скрипта")
 TOKEN = "7669060547:AAF1zdVIBcmmFKQGhQ7UGUT8foFKW4EBVxs"
 YOOMONEY_WALLET = "4100118178122985"
 KOYEB_URL = "https://favourite-brinna-createthisshit-eca5920c.koyeb.app/save_payment"
-WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Замени на твой Render URL
+WEBHOOK_HOST = "https://d-wd9e.onrender.com"  # Замени на твой Render URL, например, https://newmirapaybot.onrender.com
 WEBHOOK_PATH = "/telegram"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -113,8 +113,12 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
                         logger.info(f"label={payment_label} отправлен на Koyeb для user_id={user_id}")
                     else:
                         logger.error(f"Ошибка отправки на Koyeb: {await response.text()}")
+                        await bot.send_message(chat_id, "Ошибка сервера, попробуйте позже.")
+                        return
             except Exception as e:
                 logger.error(f"Ошибка связи с Koyeb: {e}")
+                await bot.send_message(chat_id, "Ошибка сервера, попробуйте позже.")
+                return
        
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton(text="Оплатить", url=payment_url))
@@ -126,23 +130,28 @@ async def pay_command(message_or_callback: types.Message | types.CallbackQuery):
 
 # Веб-сервер для webhook
 async def on_startup(_):
-    logger.info("Установка webhook")
+    logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
     try:
+        await bot.delete_webhook()  # Удаляем старый webhook, если есть
         await bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"Webhook установлен: {WEBHOOK_URL}")
+        logger.info(f"Webhook успешно установлен: {WEBHOOK_URL}")
     except Exception as e:
-        logger.error(f"Ошибка установки webhook: {e}")
+        logger.error(f"Ошибка установки webhook: {e}\n{traceback.format_exc()}")
         sys.exit(1)
 
 async def on_shutdown(_):
     logger.info("Удаление webhook")
-    await bot.delete_webhook()
-    await dp.storage.close()
-    await dp.storage.wait_closed()
+    try:
+        await bot.delete_webhook()
+        await dp.storage.close()
+        await dp.storage.wait_closed()
+    except Exception as e:
+        logger.error(f"Ошибка при удалении webhook: {e}")
 
 async def handle_webhook(request):
     try:
         update = await request.json()
+        logger.info("Получено обновление от Telegram")
         await dp.process_update(types.Update(**update))
         return web.Response(status=200)
     except Exception as e:
@@ -159,6 +168,7 @@ if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
         port = int(os.getenv("PORT", 8080))  # Render задаёт порт через переменную окружения
+        logger.info(f"Запуск сервера на порту {port}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
         logger.error(f"Ошибка запуска веб-сервера: {e}\n{traceback.format_exc()}")
