@@ -9,6 +9,7 @@ from aiohttp import web, ClientSession
 from urllib.parse import urlencode
 import traceback
 import os
+import asyncio
 
 # Настройка логирования
 logging.basicConfig(
@@ -133,13 +134,24 @@ async def handle_ping(request):
     logger.info("Получен GET-запрос на /ping")
     return web.Response(text="Bot is alive", status=200)
 
+# Проверка текущего webhook
+async def check_webhook():
+    try:
+        webhook_info = await bot.get_webhook_info()
+        logger.info(f"Webhook info: {webhook_info}")
+        if webhook_info.url != WEBHOOK_URL:
+            logger.warning(f"Webhook URL не совпадает: expected={WEBHOOK_URL}, actual={webhook_info.url}")
+            await bot.delete_webhook()
+            await bot.set_webhook(WEBHOOK_URL)
+            logger.info(f"Webhook перенастроен на {WEBHOOK_URL}")
+    except Exception as e:
+        logger.error(f"Ошибка проверки webhook: {e}")
+
 # Веб-сервер для webhook
 async def on_startup(_):
     logger.info(f"Попытка установки webhook: {WEBHOOK_URL}")
     try:
-        await bot.delete_webhook()
-        await bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"Webhook успешно установлен: {WEBHOOK_URL}")
+        await check_webhook()
     except Exception as e:
         logger.error(f"Ошибка установки webhook: {e}\n{traceback.format_exc()}")
         sys.exit(1)
@@ -157,7 +169,7 @@ async def on_shutdown(_):
 async def handle_webhook(request):
     try:
         update = await request.json()
-        logger.info("Получено обновление от Telegram")
+        logger.info(f"Получено обновление от Telegram: {update}")
         Bot.set_current(bot)
         Dispatcher.set_current(dp)
         await dp.process_update(types.Update(**update))
@@ -176,7 +188,7 @@ app.on_shutdown.append(on_shutdown)
 if __name__ == "__main__":
     logger.info("Запуск веб-сервера для webhook")
     try:
-        port = 8080  # Жёстко задаём порт 8080
+        port = 8080
         logger.info(f"Запуск сервера на порту {port}")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as e:
